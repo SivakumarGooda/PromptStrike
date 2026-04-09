@@ -21,6 +21,8 @@ It performs multi-turn prompt injection and rule disclosure attacks, captures fu
 
 ```
 PromptStrike/
+├── configs/               # Generated target configs (curl → JSON)
+│   └── app.config.json    # Default config used by runner
 ├── core/                  # Engine (attack loop, evaluator, sender)
 ├── datasets/              # Attack payloads
 │   ├── base/              # Generic payloads
