@@ -1,0 +1,21 @@
+{
+  "name": "app",
+  "use_tls": false,
+  "host": "localhost:3000",
+  "method": "POST",
+  "endpoint": "/api/v1/2025/LLM01/run_demo",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body_mode": "json",
+  "body_template": {
+    "user_input": "{PROMPT}"
+  },
+  "prompt_param": "user_input",
+  "prompt_placeholder": "{PROMPT}",
+  "response_field": "llm",
+  "dataset_path": "datasets/targets/app/app_rule_disclosure.txt",
+  "results_file": "rule_disclosure.jsonl",
+  "success_substring": "password",
+  "timeout": 30
+}

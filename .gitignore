@@ -1,0 +1,36 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Results / outputs (generated files)
+results/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Python build files
+build/
+dist/
+*.egg-info/
+
+# Environment variables
+.env
