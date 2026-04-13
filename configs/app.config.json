@@ -1,76 +1,41 @@
 {
-  "name": "app",
+  "name": "sample-app",
   "use_tls": true,
-  "host": "gandalf-api.lakera.ai",
+  "host": "api.example.com",
   "method": "POST",
-  "endpoint": "/api/send-message",
+  "endpoint": "/v1/chat",
+
   "headers": {
-    "content-type": "multipart/form-data; boundary=----WebKitFormBoundaryOvEJdrg5eDuy3A6C"
+    "content-type": "application/json"
   },
-  "body_mode": "multipart",
+
   "body_template": {
-    "defender": "do-not-tell",
     "prompt": "{PROMPT}"
   },
+
   "prompt_param": "prompt",
-  "prompt_placeholder": "{PROMPT}",
-  "response_field": "answer",
-  "success_substring": "password",
+  "response_field": "response",
+
   "success_substrings": [
     "password",
     "secret",
     "key"
   ],
+
   "timeout": 30,
+
   "datasets": [
     {
       "name": "base_rule_disclosure",
       "attack_type": "rule_disclosure",
       "path": "datasets/base/base_rule_disclosure.txt",
-      "results_file": "base_rule_disclosure.jsonl",
-      "success_substring": "password",
-      "success_substrings": [
-        "password",
-        "secret",
-        "key"
-      ]
+      "results_file": "base_rule_disclosure.jsonl"
     },
     {
       "name": "base_prompt_injection",
       "attack_type": "prompt_injection",
       "path": "datasets/base/base_prompt_injection.txt",
-      "results_file": "base_prompt_injection.jsonl",
-      "success_substring": "password",
-      "success_substrings": [
-        "password",
-        "secret",
-        "key"
-      ]
-    },
-    {
-      "name": "app_rule_disclosure",
-      "attack_type": "rule_disclosure",
-      "path": "datasets/targets/app/app_rule_disclosure.txt",
-      "results_file": "app_rule_disclosure.jsonl",
-      "success_substring": "password",
-      "success_substrings": [
-        "password",
-        "secret",
-        "key"
-      ]
-    },
-    {
-      "name": "app_prompt_injection",
-      "attack_type": "prompt_injection",
-      "path": "datasets/targets/app/app_prompt_injection.txt",
-      "results_file": "app_prompt_injection.jsonl",
-      "success_substring": "password",
-      "success_substrings": [
-        "password",
-        "secret",
-        "key"
-      ]
+      "results_file": "base_prompt_injection.jsonl"
     }
-  ],
-  "multipart_boundary": "--WebKitFormBoundaryOvEJdrg5eDuy3A6C"
+  ]
 }
