@@ -5,7 +5,7 @@ import re
 import shlex
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 from urllib.parse import parse_qsl, urlencode, urlparse
 
 
@@ -42,6 +42,25 @@ def ask(prompt: str, default: str | None = None) -> str:
     suffix = f" [{default}]" if default else ""
     value = input(f"{prompt}{suffix}: ").strip()
     return value or (default or "")
+
+
+def ask_yes_no(prompt: str, default: str = "n") -> bool:
+    while True:
+        value = ask(prompt, default).lower()
+        if value in ("y", "yes"):
+            return True
+        if value in ("n", "no"):
+            return False
+        print("Please enter y or n.")
+
+
+def ask_choice(prompt: str, valid_choices: List[str], default: str | None = None) -> str:
+    valid_set = set(valid_choices)
+    while True:
+        value = ask(prompt, default)
+        if value in valid_set:
+            return value
+        print(f"Invalid choice. Choose one of: {', '.join(valid_choices)}")
 
 
 def choose_from_list(title: str, items: list[tuple[str, Any]]) -> str:
@@ -81,6 +100,7 @@ def normalize_curl_text(curl_text: str) -> str:
     curl_text = curl_text.replace("$'", "'")
     return " ".join(curl_text.split())
 
+
 def sanitize_json_text(text: str) -> str:
     result: list[str] = []
     in_string = False
@@ -116,6 +136,7 @@ def sanitize_json_text(text: str) -> str:
         result.append(ch)
 
     return "".join(result)
+
 
 def normalize_body_raw(body_raw: str | None) -> str | None:
     if body_raw is None:
@@ -370,7 +391,7 @@ def set_nested_value(obj: Any, dotted_key: str, value: Any) -> Any:
     raise ValueError(f"Cannot set nested key '{dotted_key}' in current structure.")
 
 
-def build_query_template(base_endpoint: str, query_params: Dict[str, str], prompt_param: str) -> tuple[str, str, Dict[str, Any]]:
+def build_query_template(base_endpoint: str, query_params: Dict[str, str], prompt_param: str) -> tuple[Any, str, Dict[str, Any]]:
     if prompt_param not in query_params:
         raise ValueError(f"Prompt field '{prompt_param}' not found in query params.")
 
@@ -464,6 +485,131 @@ def ensure_default_datasets() -> None:
     seed_dataset_file(TARGET_PROMPT_INJECTION_PATH, BASE_PROMPT_INJECTION_PATH)
 
 
+def build_dataset_entry(
+    name: str,
+    attack_type: str,
+    path: Path,
+    success_substrings: List[str],
+) -> Dict[str, Any]:
+    return {
+        "name": name,
+        "attack_type": attack_type,
+        "path": str(path),
+        "results_file": f"{name}.jsonl",
+        "success_substring": success_substrings[0] if success_substrings else "",
+        "success_substrings": success_substrings,
+    }
+
+
+def get_available_dataset_catalog(target_name: str) -> Dict[str, Dict[str, Any]]:
+    target_rule_path = Path("datasets") / "targets" / target_name / f"{target_name}_rule_disclosure.txt"
+    target_prompt_path = Path("datasets") / "targets" / target_name / f"{target_name}_prompt_injection.txt"
+
+    return {
+        "base_rule_disclosure": {
+            "name": "base_rule_disclosure",
+            "attack_type": "rule_disclosure",
+            "path": BASE_RULE_DISCLOSURE_PATH,
+        },
+        "base_prompt_injection": {
+            "name": "base_prompt_injection",
+            "attack_type": "prompt_injection",
+            "path": BASE_PROMPT_INJECTION_PATH,
+        },
+        f"{target_name}_rule_disclosure": {
+            "name": f"{target_name}_rule_disclosure",
+            "attack_type": "rule_disclosure",
+            "path": target_rule_path,
+        },
+        f"{target_name}_prompt_injection": {
+            "name": f"{target_name}_prompt_injection",
+            "attack_type": "prompt_injection",
+            "path": target_prompt_path,
+        },
+    }
+
+
+def ask_dataset_mode() -> str:
+    print("\nSelect dataset mode:")
+    print("1. Base only")
+    print("2. Target only")
+    print("3. Base + Target")
+    print("4. Custom selection")
+    print("5. All")
+    return ask_choice("Choose option", ["1", "2", "3", "4", "5"], "3")
+
+
+def select_datasets(target_name: str, success_substrings: List[str]) -> List[Dict[str, Any]]:
+    catalog = get_available_dataset_catalog(target_name)
+    selected_keys: List[str] = []
+
+    mode = ask_dataset_mode()
+
+    target_rule_key = f"{target_name}_rule_disclosure"
+    target_prompt_key = f"{target_name}_prompt_injection"
+
+    if mode == "1":
+        selected_keys = [
+            "base_rule_disclosure",
+            "base_prompt_injection",
+        ]
+    elif mode == "2":
+        selected_keys = [
+            target_rule_key,
+            target_prompt_key,
+        ]
+    elif mode == "3":
+        selected_keys = [
+            "base_rule_disclosure",
+            "base_prompt_injection",
+            target_rule_key,
+            target_prompt_key,
+        ]
+    elif mode == "4":
+        print("")
+        for key in [
+            "base_rule_disclosure",
+            "base_prompt_injection",
+            target_rule_key,
+            target_prompt_key,
+        ]:
+            item = catalog[key]
+            include = ask_yes_no(f"Include {item['name']}? (y/n)", "n")
+            if include:
+                selected_keys.append(key)
+    elif mode == "5":
+        selected_keys = [
+            "base_rule_disclosure",
+            "base_prompt_injection",
+            target_rule_key,
+            target_prompt_key,
+        ]
+
+    if not selected_keys:
+        print("[!] No dataset selected. Falling back to target rule disclosure only.")
+        selected_keys = [target_rule_key]
+
+    seen = set()
+    datasets: List[Dict[str, Any]] = []
+
+    for key in selected_keys:
+        if key in seen:
+            continue
+        seen.add(key)
+
+        item = catalog[key]
+        datasets.append(
+            build_dataset_entry(
+                name=item["name"],
+                attack_type=item["attack_type"],
+                path=item["path"],
+                success_substrings=success_substrings,
+            )
+        )
+
+    return datasets
+
+
 def build_config_interactive(parsed: Dict[str, Any]) -> Dict[str, Any]:
     print("\n[+] Parsed curl successfully")
     print(f"    Method   : {parsed['method']}")
@@ -472,7 +618,10 @@ def build_config_interactive(parsed: Dict[str, Any]) -> Dict[str, Any]:
     print(f"    TLS      : {parsed['use_tls']}")
     print(f"    Headers  : {list(parsed['headers'].keys())}")
 
-    keep_noisy = ask("Keep noisy browser headers? (y/n)", "n").lower() == "y"
+    default_target_name = "app"
+    target_name = ask("Target name", default_target_name).strip() or default_target_name
+
+    keep_noisy = ask_yes_no("Keep noisy browser headers? (y/n)", "n")
     headers = parsed["headers"] if keep_noisy else clean_headers(parsed["headers"])
 
     if not headers:
@@ -528,11 +677,14 @@ def build_config_interactive(parsed: Dict[str, Any]) -> Dict[str, Any]:
     print(f"[+] Found current prompt example value: {original_prompt_value!r}")
 
     response_field = ask("Response field to capture", "llm_output")
-    success_substring = ask("Success substring for scorer", "Alpine Meadow")
+    success_raw = ask("Success substrings for scorer (comma separated)", "password,secret,flag,token,key")
     timeout = ask("Timeout in seconds", "30")
 
+    success_substrings = [part.strip() for part in success_raw.split(",") if part.strip()]
+    datasets = select_datasets(target_name=target_name, success_substrings=success_substrings)
+
     config: Dict[str, Any] = {
-        "name": "app",
+        "name": target_name,
         "use_tls": parsed["use_tls"],
         "host": parsed["host"],
         "method": parsed["method"],
@@ -543,10 +695,10 @@ def build_config_interactive(parsed: Dict[str, Any]) -> Dict[str, Any]:
         "prompt_param": prompt_param,
         "prompt_placeholder": "{PROMPT}",
         "response_field": response_field,
-        "dataset_path": str(TARGET_RULE_DISCLOSURE_PATH),
-        "results_file": "rule_disclosure.jsonl",
-        "success_substring": success_substring,
+        "success_substring": success_substrings[0] if success_substrings else "",
+        "success_substrings": success_substrings,
         "timeout": int(timeout),
+        "datasets": datasets,
     }
 
     config.update(extra)
@@ -633,7 +785,11 @@ def load_config(path: Path) -> Dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def save_config(config: Dict[str, Any], output_path: Path = DEFAULT_CONFIG_PATH) -> Path:
+def save_config(config: Dict[str, Any], output_path: Path | None = None) -> Path:
+    if output_path is None:
+        config_name = f"{config['name']}.config.json"
+        output_path = Path("configs") / config_name
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(config, indent=2, ensure_ascii=False) + "\n",
@@ -642,17 +798,32 @@ def save_config(config: Dict[str, Any], output_path: Path = DEFAULT_CONFIG_PATH)
     return output_path
 
 
+def ensure_target_dataset_files(target_name: str) -> None:
+    target_dir = Path("datasets") / "targets" / target_name
+    target_rule = target_dir / f"{target_name}_rule_disclosure.txt"
+    target_prompt = target_dir / f"{target_name}_prompt_injection.txt"
+
+    seed_dataset_file(target_rule, BASE_RULE_DISCLOSURE_PATH)
+    seed_dataset_file(target_prompt, BASE_PROMPT_INJECTION_PATH)
+
+
 def main() -> None:
     curl_text = prompt_multiline_input("[+] Paste curl command")
     parsed = parse_curl(curl_text)
-    config = build_config_interactive(parsed)
-    output_path = save_config(config)
     ensure_default_datasets()
+
+    config = build_config_interactive(parsed)
+    ensure_target_dataset_files(config["name"])
+
+    output_path = save_config(config)
 
     print("\n[+] Config written successfully")
     print(f"    {output_path.resolve()}")
-    print(f"[+] Dataset ready: {TARGET_RULE_DISCLOSURE_PATH.resolve()}")
-    print(f"[+] Dataset ready: {TARGET_PROMPT_INJECTION_PATH.resolve()}")
+
+    print("\n[+] Dataset entries selected:")
+    for ds in config.get("datasets", []):
+        print(f"    - {ds['name']}: {ds['path']}")
+
     print("\n[+] Generated config preview:")
     print(json.dumps(config, indent=2, ensure_ascii=False))
 

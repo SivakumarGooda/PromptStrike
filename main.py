@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+
+sys.path.append(str(Path(__file__).resolve().parent))
 
 from runners.run_attack_campaign import run_campaign
 from target_parser import main as target_parser_main
 
 
 CONFIG_PATH = "configs/app.config.json"
-DATASETS_ROOT = "datasets"
-TARGET_NAME = "app"
+DEFAULT_OUTPUT_ROOT = "results/app"
 
 
 def config_exists() -> bool:
@@ -19,10 +21,8 @@ def print_main_help() -> None:
     print("\nHelp")
     print("----")
     print("1  -> Build/update target config from curl")
-    print("2  -> Run prompt injection")
-    print("3  -> Run rule disclosure")
-    print("4  -> Run both categories")
-    print("5  -> Exit")
+    print("2  -> Run selected datasets from config")
+    print("3  -> Exit")
     print("h  -> Show this help")
     print("")
     print("During a running campaign, you can type:")
@@ -33,7 +33,7 @@ def print_main_help() -> None:
 
 
 def ask_max_requests(default: int = 100) -> int:
-    raw = input(f"Enter max total requests [{default}]: ").strip()
+    raw = input(f"Enter max total requests per each dataset [{default}]: ").strip()
     if not raw:
         return default
     try:
@@ -46,54 +46,45 @@ def ask_max_requests(default: int = 100) -> int:
         return default
 
 
-def run_prompt_injection() -> None:
+def ask_max_turns(default: int = 5) -> int:
+    raw = input(f"Enter max turns per case [{default}]: ").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+        if value <= 0:
+            raise ValueError
+        return value
+    except ValueError:
+        print(f"[-] Invalid value. Using default: {default}")
+        return default
+
+
+def ask_output_root(default: str = DEFAULT_OUTPUT_ROOT) -> str:
+    raw = input(f"Enter output directory [{default}]: ").strip()
+    return raw or default
+
+
+def run_selected_datasets() -> None:
+    if not config_exists():
+        print(f"[-] Config not found: {CONFIG_PATH}")
+        print("[*] Please run option 1 first.")
+        return
+
     max_total_requests = ask_max_requests(100)
+    max_turns = ask_max_turns(5)
+    output_root = ask_output_root(DEFAULT_OUTPUT_ROOT)
+
+    print(f"\n[+] Using config      : {CONFIG_PATH}")
+    print(f"[+] Output directory  : {output_root}")
+    print(f"[+] Max turns/case    : {max_turns}")
+    print(f"[+] Max total requests: {max_total_requests}")
+    print("")
+
     run_campaign(
         config_path=CONFIG_PATH,
-        datasets_root=DATASETS_ROOT,
-        target_name=TARGET_NAME,
-        category="prompt_injection",
-        output_root="results",
-        max_turns=5,
-        max_total_requests=max_total_requests,
-    )
-
-
-def run_rule_disclosure() -> None:
-    max_total_requests = ask_max_requests(100)
-    run_campaign(
-        config_path=CONFIG_PATH,
-        datasets_root=DATASETS_ROOT,
-        target_name=TARGET_NAME,
-        category="rule_disclosure",
-        output_root="results",
-        max_turns=5,
-        max_total_requests=max_total_requests,
-    )
-
-
-def run_both() -> None:
-    max_total_requests = ask_max_requests(100)
-
-    print("\n[+] Running prompt injection\n")
-    run_campaign(
-        config_path=CONFIG_PATH,
-        datasets_root=DATASETS_ROOT,
-        target_name=TARGET_NAME,
-        category="prompt_injection",
-        output_root="results",
-        max_turns=5,
-        max_total_requests=max_total_requests,
-    )
-
-    print("\n[+] Running rule disclosure\n")
-    run_campaign(
-        config_path=CONFIG_PATH,
-        datasets_root=DATASETS_ROOT,
-        target_name=TARGET_NAME,
-        category="rule_disclosure",
-        output_root="results",
-        max_turns=5,
+        output_root=output_root,
+        max_turns=max_turns,
         max_total_requests=max_total_requests,
     )
 
@@ -102,39 +93,19 @@ def main() -> None:
     while True:
         print("\nChoose an option:")
         print("1. Build/update target config from curl")
-        print("2. Run prompt injection")
-        print("3. Run rule disclosure")
-        print("4. Run both")
-        print("5. Exit")
+        print("2. Run selected datasets from config")
+        print("3. Exit")
         print("h. Help")
 
-        choice = input("Enter choice [1/2/3/4/5/h]: ").strip().lower()
+        choice = input("Enter choice [1/2/3/h]: ").strip().lower()
 
         if choice == "1":
             target_parser_main()
 
         elif choice == "2":
-            if not config_exists():
-                print(f"[-] Config not found: {CONFIG_PATH}")
-                print("[*] Please run option 1 first.")
-                continue
-            run_prompt_injection()
+            run_selected_datasets()
 
         elif choice == "3":
-            if not config_exists():
-                print(f"[-] Config not found: {CONFIG_PATH}")
-                print("[*] Please run option 1 first.")
-                continue
-            run_rule_disclosure()
-
-        elif choice == "4":
-            if not config_exists():
-                print(f"[-] Config not found: {CONFIG_PATH}")
-                print("[*] Please run option 1 first.")
-                continue
-            run_both()
-
-        elif choice == "5":
             print("[+] Exiting")
             break
 
