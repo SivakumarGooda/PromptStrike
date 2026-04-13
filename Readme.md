@@ -1,38 +1,44 @@
 # 🚀 PromptStrike
 
-**PromptStrike** is a lightweight LLM security testing tool for HTTP-based AI applications.
-It performs multi-turn prompt injection and rule disclosure attacks, captures full request/response evidence, and generates HTML reports for analysis.
+**PromptStrike** is a lightweight LLM security testing tool for HTTP-based AI applications.  
+It performs multi-turn prompt injection and rule disclosure attacks, supports flexible dataset-based testing, captures full request/response evidence, and generates HTML reports for analysis.
 
 ---
 
 ## 🔥 Features
 
-* 🔍 Test **Prompt Injection** and **Rule Disclosure**
-* 🧠 Multi-turn adaptive attack engine
-* 📡 Works with any HTTP-based LLM endpoint
-* 🧾 Full **request & response logging**
-* 📊 Generates **HTML + JSONL reports**
-* ⏸️ Runtime controls: pause / resume / stop
-* ⚡ Config builder from **curl command**
+- 🔍 Test **Prompt Injection** and **Rule Disclosure**
+- 🧠 Multi-turn adaptive attack engine
+- 📡 Works with any HTTP-based LLM endpoint
+- 🧾 Full **request & response logging**
+- 📊 Generates **HTML + JSONL reports (per dataset)**
+- 🎯 Supports **Base + Target datasets**
+- ⚡ Config builder from **curl command**
+- ⏸️ Runtime controls: pause / resume / stop
 
 ---
 
 ## 🏗️ Project Structure
 
-```
+```text
 PromptStrike/
-├── configs/               # Generated target configs (curl → JSON)
-│   └── app.config.json    # Default config used by runner
-├── core/                  # Engine (attack loop, evaluator, sender)
-├── datasets/              # Attack payloads
-│   ├── base/              # Generic payloads
-│   └── targets/           # Target-specific payloads
-├── models/                # Attack state models
-├── runners/               # Campaign runner
-├── targets/               # HTTP target logic
-├── results/               # Generated reports
-├── main.py                # Entry point
-├── target_parser.py       # Curl → config builder
+├── configs/
+│   └── app.config.json
+├── core/
+├── datasets/
+│   ├── base/
+│   │   ├── base_rule_disclosure.txt
+│   │   └── base_prompt_injection.txt
+│   └── targets/
+│       └── app/
+│           ├── app_rule_disclosure.txt
+│           └── app_prompt_injection.txt
+├── models/
+├── runners/
+│   └── run_attack_campaign.py
+├── results/
+├── main.py
+├── target_parser.py
 └── requirements.txt
 ```
 
@@ -46,7 +52,7 @@ cd PromptStrike
 
 python3 -m venv .venv
 source .venv/bin/activate   # macOS/Linux
-# .venv\Scripts\activate    # Windows
+# .venv\Scripts\activate   # Windows
 
 pip install -r requirements.txt
 ```
@@ -55,30 +61,24 @@ pip install -r requirements.txt
 
 ## ▶️ Usage
 
-Run the tool:
-
 ```bash
 python main.py
 ```
 
 ---
 
-### Menu Options
+## 🧭 Menu Options
 
-```
+```text
 1. Build/update target config from curl
-2. Run prompt injection
-3. Run rule disclosure
-4. Run both
-5. Exit
+2. Run selected datasets from config
+3. Exit
 h. Help
 ```
 
 ---
 
-### 🔧 Step 1: Build Target Config
-
-Paste a curl request:
+## 🔧 Step 1: Build Target Config
 
 ```bash
 curl http://localhost:8000/chat \
@@ -89,114 +89,90 @@ curl http://localhost:8000/chat \
 
 This generates:
 
-```
+```text
 configs/app.config.json
 ```
 
 ---
 
-### ⚔️ Step 2: Run Attacks
+## 🧠 Dataset Selection
 
-Choose:
-
+```text
+Select dataset mode:
+1. Base only
+2. Target only
+3. Base + Target
+4. Custom selection
+5. All
 ```
-2 → Prompt Injection
-3 → Rule Disclosure
-4 → Both
+
+---
+
+## ⚔️ Step 2: Run Attacks
+
+```text
+2 → Run selected datasets from config
 ```
 
-You will be prompted:
-
-```
-Enter max total requests [100]:
+```text
+Enter max requests per dataset [100]:
+Enter max turns per case [5]:
+Enter output directory [results/app]:
 ```
 
 ---
 
 ## 🎮 Runtime Controls
 
-While running, type:
-
-```
+```text
 p → pause
 r → resume
 q → stop safely
 ```
 
-👉 Press **Enter after typing**
+Press **Enter once** after typing.
 
 ---
 
 ## 📊 Output
 
-Reports are saved in:
-
-```
-results/
+```text
+results/app/
 ```
 
-Files generated:
+Example:
 
-```
-prompt_injection.jsonl
-prompt_injection.html
-rule_disclosure.jsonl
-rule_disclosure.html
+```text
+base_rule_disclosure.jsonl
+base_rule_disclosure.html
+
+base_prompt_injection.jsonl
+base_prompt_injection.html
+
+app_rule_disclosure.jsonl
+app_rule_disclosure.html
+
+app_prompt_injection.jsonl
+app_prompt_injection.html
 ```
 
 ---
 
 ## 🧠 How It Works
 
-```
+```text
 Payload → Send → Observe → Evaluate → Mutate → Retry → Report
 ```
-
-Each **case**:
-
-* uses one payload
-* runs multiple turns (max 5)
-* stops early if success/suspicious detected
-
----
-
-## 📈 Example Output
-
-```
-[+] Category      : rule_disclosure
-[+] Cases done    : 41/100
-[+] Requests sent : 197
-[+] Req/sec       : 0.25
-[+] Verdicts      : success=1 | suspicious=6 | failed=34
-```
-
----
-
-## 🎯 Use Cases
-
-* LLM penetration testing
-* Red teaming AI applications
-* Detecting prompt injection vulnerabilities
-* Identifying hidden system prompt leakage
 
 ---
 
 ## ⚠️ Disclaimer
 
-This tool is intended for **authorized security testing only**.
+This tool is intended for **authorized security testing only**.  
 Do not use against systems without permission.
-
----
-
-## 🚀 Future Improvements
-
-* LLM-based adaptive attacker (PyRIT-style)
-* Advanced scoring & signal analysis
-* Resume from previous runs
-* CLI mode (`promptstrike scan ...`)
 
 ---
 
 ## ⭐ Credits
 
-Built for learning and advancing **AI red teaming** techniques.
+Built for AI red teaming learning.
